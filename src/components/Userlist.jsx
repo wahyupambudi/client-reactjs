@@ -15,7 +15,7 @@ const Userlist = () => {
 
   const RefreshToken = async () => {
     try {
-      const response = await axios.get("http://localhost:2023/token");
+      const response = await axios.get("http://52.199.149.14:2024/token");
       setToken(response.data.accessToken);
       const decoded = jwt_decode(response.data.accessToken);
       setExpire(decoded.exp);
@@ -32,7 +32,7 @@ const Userlist = () => {
     async (config) => {
       const currentDate = new Date();
       if (expire * 1000 < currentDate.getTime()) {
-        const response = await axios.get("http://localhost:2023/token");
+        const response = await axios.get("http://52.199.149.14:2024/token");
         config.headers.Authorization = `Bearer ${response.data.accessToken}`;
         setToken(response.data.accessToken);
         const decoded = jwt_decode(response.data.accessToken);
@@ -46,18 +46,22 @@ const Userlist = () => {
   );
 
   const getUsers = async () => {
-    const response = await axiosJWT.get("http://localhost:2023/users", {
+    const response = await axiosJWT.get("http://52.199.149.14:2024/users", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-
     // console.log(response.data.response);
     setUsers(response.data.response);
   };
 
   const deleteUser = async (userId) => {
-    await axios.delete(`http://localhost:2023/users/${userId}`);
+    RefreshToken();
+    await axiosJWT.delete(`http://52.199.149.14:2024/users/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     getUsers();
   };
 

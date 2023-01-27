@@ -7,7 +7,7 @@ const FormEditUser = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confPassword, setConfPassword] = useState("");
+  const [password1, setPassword1] = useState("");
   const [role, setRole] = useState("");
   const [token, setToken] = useState("");
   const [expire, setExpire] = useState("");
@@ -17,7 +17,7 @@ const FormEditUser = () => {
 
   const RefreshToken = async () => {
     try {
-      const response = await axios.get("http://localhost:2023/token");
+      const response = await axios.get("http://52.199.149.14:2024/token");
       setToken(response.data.accessToken);
       const decoded = jwt_decode(response.data.accessToken);
       setExpire(decoded.exp);
@@ -28,45 +28,44 @@ const FormEditUser = () => {
     }
   };
 
+  const axiosJWT = axios.create();
+
+  axiosJWT.interceptors.request.use(
+    async (config) => {
+      const currentDate = new Date();
+      if (expire * 1000 < currentDate.getTime()) {
+        const response = await axios.get("http://52.199.149.14:2024/token");
+        config.headers.Authorization = `Bearer ${response.data.accessToken}`;
+        setToken(response.data.accessToken);
+        const decoded = jwt_decode(response.data.accessToken);
+        setExpire(decoded.exp);
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
   useEffect(() => {
     RefreshToken();
-
-    const axiosJWT = axios.create();
-
-    axiosJWT.interceptors.request.use(
-      async (config) => {
-        const currentDate = new Date();
-        if (expire * 1000 < currentDate.getTime()) {
-          const response = await axios.get("http://localhost:2023/token");
-          config.headers.Authorization = `Bearer ${response.data.accessToken}`;
-          setToken(response.data.accessToken);
-          const decoded = jwt_decode(response.data.accessToken);
-          setExpire(decoded.exp);
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
 
     const getUserById = async () => {
       try {
         const response = await axiosJWT.get(
-          `http://localhost:2023/users/${id}`,
+          `http://52.199.149.14:2024/users/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }
         );
-        setName(response.response.data.name);
-        setEmail(response.response.data.email);
-        setRole(response.response.data.role);
+        setName(response.data.response.name);
+        setEmail(response.data.response.email);
+        setRole(response.data.response.role);
       } catch (error) {
         if (error.response) {
           setMsg(error.response.data.msg);
-          console.log(setMsg);
         }
       }
     };
@@ -74,19 +73,29 @@ const FormEditUser = () => {
   }, [id]);
 
   const updateUser = async (e) => {
+    RefreshToken();
     e.preventDefault();
     try {
-      await axios.patch(`http://localhost:2023/users/${id}`, {
-        name: name,
-        email: email,
-        password: password,
-        confPassword: confPassword,
-        role: role,
-      });
+      await axiosJWT.patch(
+        `http://52.199.149.14:2024/users/${id}`,
+        {
+          name: name,
+          email: email,
+          password: password,
+          password1: password1,
+          role: role,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       navigate("/users");
     } catch (error) {
       if (error.response) {
         setMsg(error.response.data.msg);
+        console.log(error.response.data.msg);
       }
     }
   };
@@ -141,8 +150,8 @@ const FormEditUser = () => {
                   <input
                     type="password"
                     className="input"
-                    value={confPassword}
-                    onChange={(e) => setConfPassword(e.target.value)}
+                    value={password1}
+                    onChange={(e) => setPassword1(e.target.value)}
                     placeholder="******"
                   />
                 </div>
@@ -156,7 +165,8 @@ const FormEditUser = () => {
                       onChange={(e) => setRole(e.target.value)}
                     >
                       <option value="admin">Admin</option>
-                      <option value="user">User</option>
+                      <option value="operator">Operator</option>
+                      <option value="ketuajurusan">Ketua Jurusan</option>
                     </select>
                   </div>
                 </div>

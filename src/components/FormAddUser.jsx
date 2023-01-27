@@ -1,26 +1,70 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import jwt_decode from "jwt-decode";
 
 const FormAddUser = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confPassword, setConfPassword] = useState("");
+  const [password1, setPassword1] = useState("");
   const [role, setRole] = useState("");
+  const [token, setToken] = useState("");
+  const [expire, setExpire] = useState("");
   const [msg, setMsg] = useState("");
   const navigate = useNavigate();
 
+  const RefreshToken = async () => {
+    try {
+      const response = await axios.get("http://52.199.149.14:2024/token");
+      setToken(response.data.accessToken);
+      const decoded = jwt_decode(response.data.accessToken);
+      setExpire(decoded.exp);
+    } catch (error) {
+      if (error.response) {
+        // history.push("/");
+      }
+    }
+  };
+
+  const axiosJWT = axios.create();
+
+  axiosJWT.interceptors.request.use(
+    async (config) => {
+      const currentDate = new Date();
+      if (expire * 1000 < currentDate.getTime()) {
+        const response = await axios.get("http://52.199.149.14:2024/token");
+        config.headers.Authorization = `Bearer ${response.data.accessToken}`;
+        setToken(response.data.accessToken);
+        const decoded = jwt_decode(response.data.accessToken);
+        setExpire(decoded.exp);
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
   const saveUser = async (e) => {
+    RefreshToken();
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/users", {
-        name: name,
-        email: email,
-        password: password,
-        confPassword: confPassword,
-        role: role,
-      });
+      await axiosJWT.post(
+        "http://52.199.149.14:2024/users",
+        {
+          name: name,
+          email: email,
+          password: password,
+          password1: password1,
+          role: role,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       navigate("/users");
     } catch (error) {
       if (error.response) {
@@ -79,8 +123,8 @@ const FormAddUser = () => {
                   <input
                     type="password"
                     className="input"
-                    value={confPassword}
-                    onChange={(e) => setConfPassword(e.target.value)}
+                    value={password1}
+                    onChange={(e) => setPassword1(e.target.value)}
                     placeholder="******"
                   />
                 </div>
@@ -94,7 +138,8 @@ const FormAddUser = () => {
                       onChange={(e) => setRole(e.target.value)}
                     >
                       <option value="admin">Admin</option>
-                      <option value="user">User</option>
+                      <option value="operator">Operator</option>
+                      <option value="ketuajurusan">Ketua Jurusan</option>
                     </select>
                   </div>
                 </div>
